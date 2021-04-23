@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include proceso *.css
+recursive-include proceso *.csv
+recursive-include proceso *.html
+recursive-include proceso *.ico
+recursive-include proceso *.js
+recursive-include proceso *.json
+recursive-include proceso *.md
+recursive-include proceso *.png
+recursive-include proceso *.py
+recursive-include proceso *.svg
+recursive-include proceso *.txt
+recursive-exclude proceso *.pyc
