@@ -34,7 +34,8 @@ app_license = "MIT"
 
 # include js in doctype views
 doctype_js = {
-	"User" : "public/js/user.js"
+	"User" : "public/js/user.js",
+	"Task" : "public/js/task.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -51,6 +52,12 @@ doctype_js = {
 #	"Role": "home_page"
 # }
 
+app_logo_url = "/assets/proceso/images/blue_logo.svg"
+
+website_context = {
+    "favicon": 	"/assets/proceso/images/favicon.ico",
+	"splash_image": "/assets/proceso/images/blue_logo.svg"
+}
 # Generators
 # ----------
 
@@ -96,6 +103,9 @@ doctype_js = {
 doc_events = {
 	"User": {
 		"validate": "proceso.hook.user.validate",
+	},
+	"Task": {
+		"validate": "proceso.hook.task.validate",
 	}
 }
 
