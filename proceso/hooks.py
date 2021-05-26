@@ -55,7 +55,7 @@ doctype_js = {
 app_logo_url = "/assets/proceso/images/blue_logo.svg"
 
 website_context = {
-    "favicon": 	"/assets/proceso/images/favicon.ico",
+    "favicon": 	"/assets/proceso/images/favicon.png",
 	"splash_image": "/assets/proceso/images/blue_logo.svg"
 }
 # Generators
