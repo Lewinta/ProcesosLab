@@ -34,8 +34,10 @@ app_license = "MIT"
 
 # include js in doctype views
 doctype_js = {
-	"User" : "public/js/user.js",
-	"Task" : "public/js/task.js",
+    "User": "public/js/user.js",
+    "Task": "public/js/task.js",
+    "Sales Invoice": "public/js/sales_invoice.js",
+    "Sales Order": "public/js/sales_order.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -56,7 +58,7 @@ app_logo_url = "/assets/proceso/images/blue_logo.svg"
 
 website_context = {
     "favicon": 	"/assets/proceso/images/favicon.png",
-	"splash_image": "/assets/proceso/images/blue_logo.svg"
+    "splash_image": "/assets/proceso/images/blue_logo.svg"
 }
 # Generators
 # ----------
@@ -101,12 +103,18 @@ website_context = {
 # Hook on document methods and events
 
 doc_events = {
-	"User": {
-		"validate": "proceso.hook.user.validate",
-	},
-	"Task": {
-		"validate": "proceso.hook.task.validate",
-	}
+    "User": {
+        "validate": "proceso.hook.user.validate",
+    },
+    "Task": {
+        "validate": "proceso.hook.task.validate",
+    },
+    "Employee Checkin": {
+        "after_insert": "proceso.hook.employee_checkin.after_insert",
+    },
+    "Price List": {
+        "after_insert": "proceso.hook.price_list.after_insert",
+    }
 }
 
 # Scheduled Tasks
@@ -158,23 +166,22 @@ doc_events = {
 # --------------------
 
 user_data_fields = [
-	{
-		"doctype": "{doctype_1}",
-		"filter_by": "{filter_by}",
-		"redact_fields": ["{field_1}", "{field_2}"],
-		"partial": 1,
-	},
-	{
-		"doctype": "{doctype_2}",
-		"filter_by": "{filter_by}",
-		"partial": 1,
-	},
-	{
-		"doctype": "{doctype_3}",
-		"strict": False,
-	},
-	{
-		"doctype": "{doctype_4}"
-	}
+    {
+        "doctype": "{doctype_1}",
+        "filter_by": "{filter_by}",
+        "redact_fields": ["{field_1}", "{field_2}"],
+        "partial": 1,
+    },
+    {
+        "doctype": "{doctype_2}",
+        "filter_by": "{filter_by}",
+        "partial": 1,
+    },
+    {
+        "doctype": "{doctype_3}",
+        "strict": False,
+    },
+    {
+        "doctype": "{doctype_4}"
+    }
 ]
-
