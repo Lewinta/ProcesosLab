@@ -29,6 +29,27 @@
         }
     }
 
+
+    function refresh(frm) {
+        frappe.run_serially([
+            _ => update_discount_on_items_label(frm),
+        ]);
+    }
+
+    function validate(frm) {
+        frappe.run_serially([
+            _ => validate_against_difference_amount(frm),
+        ]);
+    }
+
+    function update_discount_on_items_label(frm) {
+        const fieldname = "discount_on_items";
+        const property = "label";
+        const value = `${__("Discount on Items")} %`;
+
+        frm.set_df_property(fieldname, property, value);
+    }
+
     function discount_on_items(frm) {
         const { doc } = frm;
 
@@ -60,23 +81,33 @@
             frappe.throw("Ha ocurrido un error por culpa de desarrollador");
         }
 
-        for (const item of doc.items) {
-            const { doctype, name } = item;
-            const fieldname = "discount_percentage";
+        frappe.run_serially([
+            _ => frappe.dom.freeze("Espere..."),
+            _ => frappe.timeout(.5),
+            _ => {
+                for (const item of doc.items) {
+                    const { doctype, name } = item;
+                    const fieldname = "discount_percentage";
 
-            frappe
-                .model
-                .set_value(doctype, name, fieldname, value)
-                ;
-        }
+                    frappe
+                        .model
+                        .set_value(doctype, name, fieldname, value)
+                        ;
+                }
+            },
+            _ => frappe.timeout(1.5),
+            _ => frappe.dom.unfreeze(),
+            _ => validate_against_difference_amount(frm),
+        ]);
 
-        validate_against_difference_amount(frm);
     }
 
     function validate_against_difference_amount(frm) {
         // will validate the total amount discounted
         // against the difference amount field
         // which cannot be greater than
+        frappe.validated = false;
+
         const { doc } = frm;
 
         let total_discount = 0.000;
@@ -90,11 +121,14 @@
             frappe.throw(
                 `No es posible agregar un descuento mayor a la diferencia que pagaria el paciente.`
             );
+        } else {
+            frappe.validated = true;
         }
-
     }
 
     frappe.ui.form.on("Sales Order", {
+        refresh,
+        validate,
         items_add,
         discount_on_items,
     });
