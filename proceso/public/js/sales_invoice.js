@@ -3,133 +3,225 @@
 /* eslint-disable */
 
 {
-    const { log } = console;
+  const { log } = console;
 
-    function is_empty(value) {
-        // evaluate a number field and
-        // will return true if value is falsy value 
-        // excepting 0 value... which is falsy but still valid for the field
-        return !value && value !== 0;
+  function is_empty(value) {
+    // evaluate a number field and
+    // will return true if value is falsy value
+    // excepting 0 value... which is falsy but still valid for the field
+    return !value && value !== 0;
+  }
+
+  function test_is_empty() {
+    if (
+      is_empty(0) === false &&
+      is_empty(4) === false &&
+      is_empty(-9) === false &&
+      is_empty(10) === false &&
+      is_empty("") === true &&
+      is_empty(null) === true &&
+      is_empty(undefined) === true
+    ) {
+      log("test is_empty passed");
+    } else {
+      log("test is_empty failed");
+    }
+  }
+
+  function refresh(frm) {
+    frappe.run_serially([(_) => update_discount_on_items_label(frm)]);
+  }
+
+  function validate(frm) {
+    frappe.run_serially([(_) => validate_against_difference_amount(frm)]);
+  }
+
+  function update_discount_on_items_label(frm) {
+    const fieldname = "discount_on_items";
+    const property = "label";
+    const value = `${__("Discount on Items")} %`;
+
+    frm.set_df_property(fieldname, property, value);
+  }
+
+  function discount_on_items(frm) {
+    //discount apply by percentage
+    const { doc } = frm;
+
+    if (is_empty(doc.discount_on_items)) {
+      return "Skipping as the field is empty";
     }
 
+    // otherwise... apply discount
+    apply_discount_on_items(frm);
+  }
 
-    function test_is_empty() {
-        if (
-            is_empty(0) === false &&
-            is_empty(4) === false &&
-            is_empty(-9) === false &&
-            is_empty(10) === false &&
-            is_empty("") === true &&
-            is_empty(null) === true &&
-            is_empty(undefined) === true
-        ) {
-            log("test is_empty passed");
-        } else {
-            log("test is_empty failed");
-        }
+  function discount_for_items(frm) {
+    // discount apply by amount
+    const { doc } = frm;
+
+    if (is_empty(doc.discount_for_items)) {
+      return "Skipping as the field is empty";
     }
 
+    apply_discount_for_items(frm);
+  }
 
-    function refresh(frm) {
-        frappe.run_serially([
-            _ => update_discount_on_items_label(frm),
-        ]);
+  function items_add(frm) {
+    const { doc } = frm;
+
+    if (is_empty(doc.discount_on_items)) {
+      return "Skipping as the field is empty";
     }
 
-    function validate(frm) {
-        frappe.run_serially([
-            _ => validate_against_difference_amount(frm),
-        ]);
+    // otherwise... apply discount
+    apply_discount_on_items(frm);
+  }
+
+  function apply_discount_on_items(frm) {
+    const { doc } = frm;
+
+    const { discount_on_items: value } = doc;
+
+    if (is_empty(value)) {
+      frappe.throw("Ha ocurrido un error por culpa de desarrollador");
     }
 
-    function update_discount_on_items_label(frm) {
-        const fieldname = "discount_on_items";
-        const property = "label";
-        const value = `${__("Discount on Items")} %`;
-
-        frm.set_df_property(fieldname, property, value);
-    }
-
-    function discount_on_items(frm) {
-        const { doc } = frm;
-
-        if (is_empty(doc.discount_on_items)) {
-            return "Skipping as the field is empty";;
-        }
-
-        // otherwise... apply discount
-        apply_discount_on_items(frm);
-    }
-
-    function items_add(frm) {
-        const { doc } = frm;
-
-        if (is_empty(doc.discount_on_items)) {
-            return "Skipping as the field is empty";
-        }
-
-        // otherwise... apply discount
-        apply_discount_on_items(frm);
-    }
-
-    function apply_discount_on_items(frm) {
-        const { doc } = frm;
-
-        const { discount_on_items: value } = doc;
-
-        if (is_empty(value)) {
-            frappe.throw("Ha ocurrido un error por culpa de desarrollador");
-        }
-
-        frappe.run_serially([
-            _ => frappe.dom.freeze("Espere..."),
-            _ => frappe.timeout(.5),
-            _ => {
-                for (const item of doc.items) {
-                    const { doctype, name } = item;
-                    const fieldname = "discount_percentage";
-
-                    frappe
-                        .model
-                        .set_value(doctype, name, fieldname, value)
-                        ;
-                }
-            },
-            _ => frappe.timeout(1.5),
-            _ => frappe.dom.unfreeze(),
-            _ => validate_against_difference_amount(frm),
-        ]);
-
-    }
-
-    function validate_against_difference_amount(frm) {
-        // will validate the total amount discounted
-        // against the difference amount field
-        // which cannot be greater than
-        frappe.validated = false;
-
-        const { doc } = frm;
-
-        let total_discount = 0.000;
-
+    frappe.run_serially([
+      (_) => frappe.dom.freeze("Espere..."),
+      (_) => frappe.timeout(0.5),
+      (_) => {
         for (const item of doc.items) {
-            // const { doctype, name } = item;
-            total_discount += flt(item.discount_amount, 2);
-        }
+          const { doctype, name } = item;
+          const fieldname = "discount_percentage";
 
-        if (total_discount > doc.difference_amount) {
-            frappe.throw(
-                `No es posible agregar un descuento mayor a la diferencia que pagaria el paciente.`
-            );
-        } else {
-            frappe.validated = true;
+          frappe.model.set_value(doctype, name, fieldname, value);
         }
+      },
+      (_) => frappe.timeout(1.5),
+      (_) => frappe.dom.unfreeze(),
+      (_) => validate_against_difference_amount(frm),
+    ]);
+  }
+
+  function apply_discount_for_items(frm) {
+    const { doc } = frm;
+    const { discount_for_items: discount_amount } = doc;
+
+    if (is_empty(discount_amount)) {
+      frappe.throw("Ha ocurrido un error por culpa del desarrollador");
     }
 
-    frappe.ui.form.on("Sales Invoice", {
-        refresh,
-        validate,
-        items_add,
-        discount_on_items,
-    });
+    frappe.run_serially([
+      (_) => frappe.dom.freeze("Espere..."),
+      (_) => frappe.timeout(0.5),
+      (_) => calculate_discount_for_items(frm, discount_amount),
+      (_) => frappe.timeout(1.5),
+      (_) => {
+        if (frm.doc.ars) {
+          frm.set_value("difference_amount", frm.doc.net_total);
+        } else {
+          frm.set_value("difference_amount", frm.doc.total);
+        }
+      },
+      (_) => frappe.dom.unfreeze(),
+      (_) => validate_against_difference_amount(frm),
+    ]);
+  }
+
+  function calculate_discount_for_items(frm, discount_amount) {
+    const { doc } = frm;
+    // Calculate total amount of all items
+    let total_amount = 0;
+    for (const item of doc.items) {
+      total_amount += flt(item.amount, 2);
+    }
+
+    // Calculate the discount for each item based on its proportion of the total amount
+    for (const item of doc.items) {
+      const { doctype, name } = item;
+      const discount_percentage = flt(
+        (discount_amount / total_amount) * 100,
+        2
+      );
+      const fieldname = "discount_percentage";
+
+      frappe.model.set_value(doctype, name, fieldname, discount_percentage);
+    }
+
+    // Calculate the new total amount after applying discounts
+    const new_total_amount = total_amount - flt(discount_amount, 2);
+
+    // If discount_amount is 0, remove the discount from all items and reset total and difference_amount
+    if (flt(discount_amount, 2) === 0) {
+      for (const item of doc.items) {
+        const { doctype, name } = item;
+        frappe.model.set_value(doctype, name, "discount_percentage", 0);
+      }
+
+      // Reset total and difference_amount to their original values
+      frm.set_value("total", total_amount);
+    } else {
+      // Update the difference_amount with the new total amount
+      frm.set_value("difference_amount", new_total_amount);
+    }
+
+    // Update the total field with the new total amount
+    frm.set_value("total", new_total_amount);
+  }
+
+  function validate_against_difference_amount(frm) {
+    // will validate the total amount discounted
+    // against the difference amount field
+    // which cannot be greater than
+    frappe.validated = false;
+
+    const { doc } = frm;
+
+    let total_discount = 0.0;
+
+    for (const item of doc.items) {
+      // const { doctype, name } = item;
+      total_discount += flt(item.discount_amount, 2);
+    }
+
+    if (total_discount > doc.difference_amount) {
+      frappe.throw(
+        `No es posible agregar un descuento mayor a la diferencia que pagaria el paciente.`
+      );
+    } else {
+      frappe.validated = true;
+    }
+  }
+
+  function discount_item(frm, cdt, cdn) {
+    calculate_discount(frm, cdt, cdn);
+  }
+
+  function calculate_discount(frm, cdt, cdn) {
+    const field_name = "difference_amount";
+    const table_name = "items";
+    const child = frappe.get_doc(cdt, cdn);
+    child.difference_amount = child.claimed_amount - child.authorized_amount;
+
+    if (child.discount_item > child.difference_amount) {
+      frappe.throw(`El descuento de la línea #${child.idx}
+                          no puede ser mayor que la diferencia`);
+    } else {
+      child.difference_amount -= child.discount_item;
+    }
+    refresh_field(field_name, cdn, table_name);
+  }
+
+  frappe.ui.form.on("Sales Invoice", {
+    refresh,
+    validate,
+    items_add,
+    discount_on_items,
+    discount_for_items,
+  });
+
+  frappe.ui.form.on("Sales Invoice Item", {
+    discount_item,
+  });
 }

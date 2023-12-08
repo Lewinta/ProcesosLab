@@ -114,7 +114,13 @@ doc_events = {
     },
     "Price List": {
         "after_insert": "proceso.hook.price_list.after_insert",
-    }
+    },
+    "Sales Order": {
+        "validate": "proceso.hook.sales_order.validate",
+    },
+    "Sales Invoice": {
+        "validate": "proceso.hook.sales_invoice.validate",
+    },
 }
 
 # Scheduled Tasks
