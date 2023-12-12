@@ -194,23 +194,57 @@
     }
   }
 
-  function discount_item(frm, cdt, cdn) {
+   function discount_item(frm, cdt, cdn) {
+    calculate_percent(frm, cdt, cdn);
+  }
+
+  function discount_with_percent(frm, cdt, cdn){
     calculate_discount(frm, cdt, cdn);
   }
 
-  function calculate_discount(frm, cdt, cdn) {
-    const field_name = "difference_amount";
+  function item_code(frm, cdt, cdn){
+    calculate_difference_amount(frm, cdt, cdn);
+  }
+
+  function calculate_difference_amount(frm, cdt, cdn){
     const table_name = "items";
     const child = frappe.get_doc(cdt, cdn);
     child.difference_amount = child.claimed_amount - child.authorized_amount;
+    refresh_field('difference_amount', cdn, table_name);
+  }
 
+  function calculate_percent(frm, cdt, cdn) {
+    const table_name = "items";
+    const child = frappe.get_doc(cdt, cdn);
     if (child.discount_item > child.difference_amount) {
-      frappe.throw(`El descuento de la línea #${child.idx}
+      frappe.throw(`El descuento de la línea #${child.idx} 
                           no puede ser mayor que la diferencia`);
     } else {
-      child.difference_amount -= child.discount_item;
+      // child.difference_amount -= child.discount;
+      child.discount_with_percent = child.discount_item / child.claimed_amount * 100;
+      child.total = child.difference_amount - child.discount_item;
     }
-    refresh_field(field_name, cdn, table_name);
+    refresh_field('discount_item', cdn, table_name);
+    refresh_field('difference_amount', cdn, table_name);
+    refresh_field('discount_with_percent', cdn, table_name);
+    refresh_field('total', cdn, table_name);
+  }
+
+
+  function calculate_discount(frm, cdt, cdn) {
+    const table_name = "items";
+    const child = frappe.get_doc(cdt, cdn);
+    if (child.discount_with_percent > 100) {
+      frappe.throw(`El porciento de descuento de la línea #${child.idx} 
+                          no puede ser mayor que 100`);
+    } else {
+      child.discount_item = child.discount_with_percent / 100 * child.difference_amount;
+      child.total = child.difference_amount - child.discount_item;
+    }
+    refresh_field('discount_item', cdn, table_name);
+    refresh_field('difference_amount', cdn, table_name);
+    refresh_field('discount_with_percent', cdn, table_name);
+    refresh_field('total', cdn, table_name);
   }
 
   frappe.ui.form.on("Sales Invoice", {
@@ -223,5 +257,7 @@
 
   frappe.ui.form.on("Sales Invoice Item", {
     discount_item,
+    discount_with_percent,
+    item_code,
   });
 }
