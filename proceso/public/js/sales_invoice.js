@@ -93,7 +93,7 @@
       (_) => {
         for (const item of doc.items) {
           const { doctype, name } = item;
-          const fieldname = "discount_percentage";
+          const fieldname = "discount_with_percent";
 
           frappe.model.set_value(doctype, name, fieldname, value);
         }
@@ -156,7 +156,7 @@
     if (flt(discount_amount, 2) === 0) {
       for (const item of doc.items) {
         const { doctype, name } = item;
-        frappe.model.set_value(doctype, name, "discount_percentage", 0);
+        frappe.model.set_value(doctype, name, "discount_percentage", 0); // cambiar el campo del seteo por el campo de descuento que yo cree
       }
 
       // Reset total and difference_amount to their original values
@@ -178,13 +178,6 @@
 
     const { doc } = frm;
 
-    let total_discount = 0.0;
-
-    for (const item of doc.items) {
-      // const { doctype, name } = item;
-      total_discount += flt(item.discount_amount, 2);
-    }
-
     if (total_discount > doc.difference_amount) {
       frappe.throw(
         `No es posible agregar un descuento mayor a la diferencia que pagaria el paciente.`
@@ -192,6 +185,28 @@
     } else {
       frappe.validated = true;
     }
+    set_fields(frm);
+  }
+
+    function set_fields(frm) {
+    const { doc } = frm;
+    let total_discount = 0.0;
+    let total_amount_without_discount = 0.0;
+    let total_amount_with_discount =0.0;
+
+    for (const item of doc.items) {
+      // const { doctype, name } = item;
+      total_discount += flt(item.discount_amount, 2);
+      total_amount_without_discount += flt(item.difference_amount, 2);
+      total_amount_with_discount += flt(item.total, 2);
+    }
+    const field_list = ['difference_amount', 'outstanding_amount', 'net_total'];
+    for (const field of field_list) {
+      doc[field] = total_amount_with_discount;
+      refresh_field(field);
+    }
+    doc.total = total_amount_without_discount;
+    refresh_field('total');
   }
 
    function discount_item(frm, cdt, cdn) {
@@ -221,13 +236,15 @@
                           no puede ser mayor que la diferencia`);
     } else {
       // child.difference_amount -= child.discount;
-      child.discount_with_percent = child.discount_item / child.claimed_amount * 100;
+      child.discount_with_percent = child.discount_item / child.difference_amount * 100;
       child.total = child.difference_amount - child.discount_item;
     }
     refresh_field('discount_item', cdn, table_name);
     refresh_field('difference_amount', cdn, table_name);
     refresh_field('discount_with_percent', cdn, table_name);
     refresh_field('total', cdn, table_name);
+
+    set_fields(frm);
   }
 
 
@@ -245,6 +262,8 @@
     refresh_field('difference_amount', cdn, table_name);
     refresh_field('discount_with_percent', cdn, table_name);
     refresh_field('total', cdn, table_name);
+
+    set_fields(frm);
   }
 
   frappe.ui.form.on("Sales Invoice", {
