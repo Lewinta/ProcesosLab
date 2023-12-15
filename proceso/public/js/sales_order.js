@@ -99,6 +99,12 @@
     frappe.validated = false;
 
     const { doc } = frm;
+    let total_discount = 0.0;   
+    for (const item of doc.items) {
+      // const { doctype, name } = item;
+     total_discount += flt(item.discount_amount, 2);
+    
+    }
 
     if (total_discount > doc.difference_amount) {
       frappe.throw(
@@ -112,17 +118,14 @@
 
   function set_fields(frm) {
     const { doc } = frm;
-    let total_discount = 0.0;
     let total_amount_without_discount = 0.0;
     let total_amount_with_discount =0.0;
 
     for (const item of doc.items) {
-      // const { doctype, name } = item;
-      total_discount += flt(item.discount_amount, 2);
       total_amount_without_discount += flt(item.difference_amount, 2);
       total_amount_with_discount += flt(item.total, 2);
     }
-    const field_list = ['difference_amount', 'outstanding_amount', 'net_total'];
+    const field_list = ["difference_amount_clone", "outstanding_amount", "net_total_clone"];
 
       for (const field of field_list) {
           doc[field] = total_amount_with_discount;
@@ -130,7 +133,7 @@
       }
 
       doc.total = total_amount_without_discount;
-      refresh_field('total');
+      refresh_field("total");
   }
 
   function discount(frm, cdt, cdn) {
@@ -149,7 +152,7 @@
     const table_name = "items";
     const child = frappe.get_doc(cdt, cdn);
     child.difference_amount = child.claimed_amount - child.authorized_amount;
-    refresh_field('difference_amount', cdn, table_name);
+    refresh_field(table_name);
   }
 
   function calculate_percent(frm, cdt, cdn) {
@@ -163,10 +166,7 @@
       child.discount_with_percent = child.discount / child.difference_amount * 100;
       child.total = child.difference_amount - child.discount;
     }
-    refresh_field('discount', cdn, table_name);
-    refresh_field('difference_amount', cdn, table_name);
-    refresh_field('discount_with_percent', cdn, table_name);
-    refresh_field('total', cdn, table_name);
+    refresh_field(table_name);
 
     set_fields(frm);
   }
@@ -182,10 +182,7 @@
       child.discount = child.discount_with_percent / 100 * child.difference_amount;
       child.total = child.difference_amount - child.discount;
     }
-    refresh_field('discount', cdn, table_name);
-    refresh_field('difference_amount', cdn, table_name);
-    refresh_field('discount_with_percent', cdn, table_name);
-    refresh_field('total', cdn, table_name);
+    refresh_field(table_name);
 
     set_fields(frm);
   }
