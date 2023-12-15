@@ -1,6 +1,7 @@
 import frappe
 from frappe.utils import flt
 
+
 def validate(doc):
     validate_discount(doc)
     calculate_fields(doc)
