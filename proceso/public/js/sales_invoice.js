@@ -140,34 +140,31 @@
     // Calculate the discount for each item based on its proportion of the total amount
     for (const item of doc.items) {
       const { doctype, name } = item;
-      const discount_percentage = flt(
-        (discount_amount / total_amount) * 100,
-        2
-      );
-      const fieldname = "discount_percentage";
+      const discount_percentage = doc.discount_for_items;
+      const fieldname = "discount_item";
 
       frappe.model.set_value(doctype, name, fieldname, discount_percentage);
     }
 
-    // Calculate the new total amount after applying discounts
-    const new_total_amount = total_amount - flt(discount_amount, 2);
+    // // Calculate the new total amount after applying discounts
+    // const new_total_amount = total_amount - flt(discount_amount, 2);
 
-    // If discount_amount is 0, remove the discount from all items and reset total and difference_amount
-    if (flt(discount_amount, 2) === 0) {
-      for (const item of doc.items) {
-        const { doctype, name } = item;
-        frappe.model.set_value(doctype, name, "discount_percentage", 0); // cambiar el campo del seteo por el campo de descuento que yo cree
-      }
+    // // If discount_amount is 0, remove the discount from all items and reset total and difference_amount
+    // if (flt(discount_amount, 2) === 0) {
+    //   for (const item of doc.items) {
+    //     const { doctype, name } = item;
+    //     frappe.model.set_value(doctype, name, "discount_item", 0); // cambiar el campo del seteo por el campo de descuento que yo cree
+    //   }
 
-      // Reset total and difference_amount to their original values
-      frm.set_value("total", total_amount);
-    } else {
-      // Update the difference_amount with the new total amount
-      frm.set_value("difference_amount", new_total_amount);
-    }
+    //   // Reset total and difference_amount to their original values
+    //   frm.set_value("total", total_amount);
+    // } else {
+    //   // Update the difference_amount with the new total amount
+    //   frm.set_value("difference_amount", new_total_amount);
+    // }
 
-    // Update the total field with the new total amount
-    frm.set_value("total", new_total_amount);
+    // // Update the total field with the new total amount
+    // frm.set_value("total", new_total_amount);
   }
 //includuir esto en unrachivo externo
   function validate_against_difference_amount(frm) {
