@@ -29,7 +29,10 @@
   }
 
   function refresh(frm) {
-    frappe.run_serially([(_) => update_discount_on_items_label(frm)]);
+    frappe.run_serially([
+      (_) => update_discount_on_items_label(frm),
+      (_) => set_fields(frm),
+    ]);
   }
 
   function validate(frm) {
@@ -125,13 +128,21 @@
       total_amount_without_discount += flt(item.difference_amount, 2);
       total_amount_with_discount += flt(item.total, 2);
     }
-    const field_list = ["difference_amount_clone", "outstanding_amount", "net_total_clone"];
-
+    
+    if(total_amount_with_discount == 0){
+      const field_list = ["difference_amount_clone", "outstanding_amount", "net_total_clone"];
+      for (const field of field_list) {
+        doc[field] = total_amount_without_discount;
+        refresh_field(field);
+      }
+      }
+    else{
+      const field_list = ["difference_amount_clone", "outstanding_amount", "net_total_clone"];
       for (const field of field_list) {
           doc[field] = total_amount_with_discount;
           refresh_field(field);
       }
-
+    }
       doc.total = total_amount_without_discount;
       refresh_field("total");
   }
@@ -146,6 +157,7 @@
 
   function item_code(frm, cdt, cdn){
     calculate_difference_amount(frm, cdt, cdn);
+    set_fields(frm);
   }
 
   function calculate_difference_amount(frm, cdt, cdn){
