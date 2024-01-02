@@ -129,27 +129,24 @@
         }
       },
       (_) => frappe.dom.unfreeze(),
-      (_) => validate_against_difference_amount(frm),
     ]);
   }
 
   function calculate_discount_for_items(frm, discount_amount) {
     const { doc } = frm;
-    // Calculate total amount of all items
-    let total_amount = 0;
-    for (const item of doc.items) {
-      total_amount += flt(item.amount, 2);
+    const new_difference_amount = doc.total - doc.discount_for_items;
+    if(doc.discount_for_items > doc.total){
+      frappe.throw("El descuento no puede ser mayor que la diferencia")
     }
-
-    // Calculate the discount for each item based on its proportion of the total amount
-    for (const item of doc.items) {
-      const { doctype, name } = item;
-      const discount_percentage = doc.discount_for_items;
-      const fieldname = "discount_item";
-
-      frappe.model.set_value(doctype, name, fieldname, discount_percentage);
+    else{
+    const field_list = ["difference_amount_clone", "outstanding_amount_clone", "net_total_clone"];
+    for (const field of field_list) {
+      frm.set_value(field, new_difference_amount);
+      refresh_field(field);
+    console.log(`${field}: ${new_difference_amount}`)
     }
-
+    }
+  }
     // // Calculate the new total amount after applying discounts
     // const new_total_amount = total_amount - flt(discount_amount, 2);
 
@@ -169,7 +166,7 @@
 
     // // Update the total field with the new total amount
     // frm.set_value("total", new_total_amount);
-  }
+  // }
 //includuir esto en unrachivo externo
   function validate_against_difference_amount(frm) {
     // will validate the total amount discounted
