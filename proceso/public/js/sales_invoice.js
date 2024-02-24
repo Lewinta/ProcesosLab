@@ -31,13 +31,12 @@
   function refresh(frm) {
     frappe.run_serially([
       (_) => update_discount_on_items_label(frm),
-      (_) => set_fields(frm),
+      // (_) => set_fields(frm),
     ]);
     
   }
 
   function validate(frm) {
-    frappe.run_serially([(_) => validate_against_difference_amount(frm)]);
   }
 
   function update_discount_on_items_label(frm) {
@@ -104,7 +103,6 @@
       },
       (_) => frappe.timeout(1.5),
       (_) => frappe.dom.unfreeze(),
-      (_) => validate_against_difference_amount(frm),
     ]);
   }
 
@@ -119,11 +117,11 @@
     frappe.run_serially([
       (_) => frappe.dom.freeze("Espere..."),
       (_) => frappe.timeout(0.5),
-      (_) => calculate_discount_for_items(frm, discount_amount),
+      (_) => calculate_discount_for_items(frm),
       (_) => frappe.timeout(1.5),
       (_) => {
         if (frm.doc.ars) {
-          frm.set_value("difference_amount", frm.doc.net_total);
+          frm.set_value("difference_amount_clone", frm.doc.net_total_clone);
         } else {
           frm.set_value("difference_amount", frm.doc.total);
         }
@@ -132,63 +130,21 @@
     ]);
   }
 
-  function calculate_discount_for_items(frm, discount_amount) {
+  function calculate_discount_for_items(frm, cdt, cdn) {
     const { doc } = frm;
-    const new_difference_amount = doc.total - doc.discount_for_items;
-    if(doc.discount_for_items > doc.total){
-      frappe.throw("El descuento no puede ser mayor que la diferencia")
+    let total_diference_amount = 0.0;
+
+    for (const item of doc.items) {
+      total_diference_amount += flt(item.difference_amount, 2);
     }
-    else{
+    
+    const new_difference_amount = flt(total_diference_amount) - flt(doc.discount_for_items);
     const field_list = ["difference_amount_clone", "outstanding_amount_clone", "net_total_clone"];
+
     for (const field of field_list) {
       frm.set_value(field, new_difference_amount);
       refresh_field(field);
-    console.log(`${field}: ${new_difference_amount}`)
     }
-    }
-  }
-    // // Calculate the new total amount after applying discounts
-    // const new_total_amount = total_amount - flt(discount_amount, 2);
-
-    // // If discount_amount is 0, remove the discount from all items and reset total and difference_amount
-    // if (flt(discount_amount, 2) === 0) {
-    //   for (const item of doc.items) {
-    //     const { doctype, name } = item;
-    //     frappe.model.set_value(doctype, name, "discount_item", 0); // cambiar el campo del seteo por el campo de descuento que yo cree
-    //   }
-
-    //   // Reset total and difference_amount to their original values
-    //   frm.set_value("total", total_amount);
-    // } else {
-    //   // Update the difference_amount with the new total amount
-    //   frm.set_value("difference_amount", new_total_amount);
-    // }
-
-    // // Update the total field with the new total amount
-    // frm.set_value("total", new_total_amount);
-  // }
-//includuir esto en unrachivo externo
-  function validate_against_difference_amount(frm) {
-    // will validate the total amount discounted
-    // against the difference amount field
-    // which cannot be greater than
-    frappe.validated = false;
-
-    const { doc } = frm;
-    let total_discount = 0.0;
-
-    for (const item of doc.items) {
-      // const { doctype, name } = item;
-      total_discount += flt(item.discount_amount, 2);
-    }
-    if (total_discount > doc.difference_amount) {
-      frappe.throw(
-        `No es posible agregar un descuento mayor a la diferencia que pagaria el paciente.`
-      );
-    } else {
-      frappe.validated = true;
-    }
-    set_fields(frm);
   }
 
     function set_fields(frm) {
@@ -197,27 +153,19 @@
     let total_amount_with_discount =0.0;
 
     for (const item of doc.items) {
-      // const { doctype, name } = item;
       total_amount_without_discount += flt(item.difference_amount, 2);
       total_amount_with_discount += flt(item.total, 2);
     }
-    if(total_amount_with_discount == 0){
-    const field_list = ["difference_amount_clone", "outstanding_amount_clone", "net_total_clone"];
-    for (const field of field_list) {
-      doc[field] = total_amount_without_discount;
-      refresh_field(field);
-    }
-    }
-    else{ 
+
     const field_list = ["difference_amount_clone", "outstanding_amount_clone", "net_total_clone"];
     for (const field of field_list) {
       doc[field] = total_amount_with_discount;
       refresh_field(field);
     }
-  }
     doc.total = total_amount_without_discount;
     refresh_field("total");
   }
+
 
    function discount_item(frm, cdt, cdn) {
     calculate_percent(frm, cdt, cdn);
@@ -246,7 +194,6 @@
       frappe.throw(`El descuento de la línea #${child.idx} 
                           no puede ser mayor que la diferencia`);
     } else {
-      // child.difference_amount -= child.discount;
       child.discount_with_percent = child.discount_item / child.difference_amount * 100;
       child.total = child.difference_amount - child.discount_item;
     }
@@ -263,7 +210,7 @@
     if (child.discount_with_percent > 100) {
       frappe.throw(`El porciento de descuento de la línea #${child.idx} 
                           no puede ser mayor que 100`);
-    } else {
+    } else if(child.discount_with_percent <= 100)  {
       child.discount_item = child.discount_with_percent / 100 * child.difference_amount;
       child.total = child.difference_amount - child.discount_item;
     }
