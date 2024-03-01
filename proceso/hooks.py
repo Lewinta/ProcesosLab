@@ -38,6 +38,7 @@ doctype_js = {
     "Task": "public/js/task.js",
     "Sales Invoice": "public/js/sales_invoice.js",
     "Sales Order": "public/js/sales_order.js",
+    "Resultado": "public/js/resultado.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -82,9 +83,9 @@ website_context = {
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+permission_query_conditions = {
+	"Resultado": "proceso.hook.resultado.get_permission_query_conditions",
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
