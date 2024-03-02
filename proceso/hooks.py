@@ -83,9 +83,7 @@ website_context = {
 # -----------
 # Permissions evaluated in scripted ways
 
-permission_query_conditions = {
-	"Resultado": "proceso.hook.resultado.get_permission_query_conditions",
-}
+# permission_query_conditions = {}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
