@@ -8,14 +8,15 @@ from frappe.utils import flt
 def validate(doc, method):
     validate_discount(doc)
     calculate_totals(doc)
+    validate_unique_items(doc, method)
 
 
 def validate_discount(doc):
     for item in doc.items:
-        item.difference_amount = item.claimed_amount - item.authorized_amount
+        item.difference_amount = round(item.claimed_amount - item.authorized_amount, 2)
         
         if item.discount > item.difference_amount:
-            frappe.throw("Los descuentos no pueden ser mayor que la diferencia")
+            frappe.msgprint(f"El descuento: {item.discount} Es mayor que la diferencia: {item.difference_amount}")
             
             
 def calculate_totals(doc):
@@ -30,4 +31,10 @@ def calculate_totals(doc):
     doc.outstanding_amount = total_amount_with_discount
     doc.net_total = total_amount_with_discount
     doc.total = total_amount_without_discount
-     
+    
+def validate_unique_items(doc, method):
+    items = set()
+    for item in doc.items:
+        items.add(item.item_code)
+    if len(items) != len(doc.items):
+        frappe.throw('No puedes tener dos items iguales en la factura')
