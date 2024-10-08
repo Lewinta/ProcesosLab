@@ -12,6 +12,10 @@
     return !value && value !== 0;
   }
 
+  function onload(frm) {
+    frm.doc.disable_rounded_total = true;
+  }
+
   function test_is_empty() {
     if (
       is_empty(0) === false &&
@@ -227,6 +231,7 @@
     items_add,
     discount_on_items,
     discount_for_items,
+    onload,
   });
 
   frappe.ui.form.on("Sales Invoice Item", {
