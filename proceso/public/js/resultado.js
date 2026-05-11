@@ -4,7 +4,6 @@
 
 {
 	function refresh(frm) {
-		add_intro_section(frm);
 	}
 
 	function add_intro_section(frm) {
@@ -21,4 +20,4 @@
 	frappe.ui.form.on("Resultado", {
 		refresh,
 	});
-}
+} 

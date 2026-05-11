@@ -39,6 +39,8 @@ doctype_js = {
     "Sales Invoice": "public/js/sales_invoice.js",
     "Sales Order": "public/js/sales_order.js",
     "Resultado": "public/js/resultado.js",
+    "Purchase Invoice": "public/js/purchase_invoice.js",
+    "Quotation": "public/js/quotation.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -120,6 +122,12 @@ doc_events = {
     "Sales Invoice": {
         "validate": "proceso.hook.sales_invoice.validate",
     },
+    "Customer": {
+        "before_validate": "proceso.hook.customer.before_validate",
+    },
+    "Quotation": {
+        "before_print": "proceso.hook.quotation.before_print",
+    },
 }
 
 # Scheduled Tasks
@@ -190,3 +198,6 @@ user_data_fields = [
         "doctype": "{doctype_4}"
     }
 ]
+
+
+boot_session = "proceso.startup.boot.boot_session"
