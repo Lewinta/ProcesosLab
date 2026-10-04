@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import get_url
+from frappe.utils import cint, cstr, get_url, getdate
 from frappe.utils.pdf import get_pdf
 
 __all__ = (
@@ -150,12 +150,29 @@ frappe.ui.form.on('Quotation', {
 	frappe.db.commit()
 	return "OK"
 
+RESULTS_ROLES = ("Portal Resultados", "System Manager")
+
+
+def _check_results_access():
+	"""El portal entra con token de un usuario con el rol "Portal Resultados".
+	Mientras el WordPress viejo siga vivo se permite Guest; para cerrarlo:
+	bench --site procesos.tzcode.net set-config resultados_allow_guest 0 (no requiere reinicio)."""
+	if frappe.session.user == "Guest":
+		if cint(frappe.conf.get("resultados_allow_guest", 1)):
+			return
+		raise frappe.PermissionError
+	if not set(RESULTS_ROLES) & set(frappe.get_roles()):
+		raise frappe.PermissionError
+
+
 @frappe.whitelist(allow_guest=True)
 def get_results(filters):
-	filters = frappe.parse_json(filters)
-	limit = 10000
-	if not filters.get("start_date") and not filters.get("end_date"):
-		limit = 500
+	_check_results_access()
+	filters = frappe._dict(frappe.parse_json(filters) or {})
+	conditions, values = get_conditions(filters)
+	if not conditions:
+		return []
+	values["limit"] = 10000 if (filters.get("start_date") or filters.get("end_date")) else 500
 	return frappe.db.sql("""
 		SELECT
 			name,
@@ -168,20 +185,18 @@ def get_results(filters):
 		FROM
 			`tabResultado`
 		WHERE
-			%(conditions)s
+			{conditions}
 		ORDER BY fecha desc, paciente, docstatus
-		LIMIT %(limit)s """ % {
-			"conditions": get_conditions(filters),
-			"limit": limit
-		}, as_dict=True, debug=False)
+		LIMIT %(limit)s """.format(conditions=" AND ".join(conditions)), values, as_dict=True)
 
 @frappe.whitelist(allow_guest=True)
-def get_institutions(medico):
+def get_institutions(medico=None):
+	_check_results_access()
 	if not medico:
 		return frappe.db.sql("""SELECT name
 			FROM `tabInstitucion`
 			WHERE pertenece_a_la_pagina = 1
-			ORDER BY name""", debug=False
+			ORDER BY name"""
 		)
 	else:
 		return frappe.db.sql("""
@@ -197,13 +212,14 @@ def get_institutions(medico):
 				`tabInstitucion`.pertenece_a_la_pagina = 1
 			AND
 				`tabResultado`.medico = %s
-			ORDER BY name""", medico, debug=False
+			ORDER BY name""", medico
 		)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_print_url(name, print_format="Resultados Timbrados"):
 	doc = frappe.get_doc("Resultado", name)
+	doc.check_permission("read")
 	return "{url}/{doctype}/{name}?format={print_format}&key={key}".format(**{
 		"url": get_url(),
 		"doctype": "Resultado",
@@ -212,60 +228,71 @@ def get_print_url(name, print_format="Resultados Timbrados"):
 		"key": doc.get_signature()
 	})
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_team(email):
 	return frappe.db.get_value("Institucion", {
 		"correo_electronico": email
 	})
-	
+
 
 @frappe.whitelist(allow_guest=True)
 def get_single_result(key):
-	name = frappe.db.exists("Resultado", {"key":key, "docstatus": 1})
-	if not name:
+	"""Validación del QR: la llave (56 caracteres) es key_code + código de autorización."""
+	key = (key or "").strip()
+	if len(key) != 56:
 		return False
-	url = "https://app.laboratoriobetalab.com/api/method/consultas.consultas.api.download_result_pdf?key_code={}".format(key)
-	return url
+	return frappe.db.get_value("Resultado", {"key": key, "docstatus": 1}, "print_url") or False
 
 @frappe.whitelist(allow_guest=True)
 def download_result_pdf(key_code, format="Resultados Timbrados", no_letterhead=0):
 	doctype = "Resultado"
-	
-	name = frappe.db.exists(doctype, {"key": key_code})
+
+	name = frappe.db.exists(doctype, {"key": key_code, "docstatus": 1}) if len(key_code or "") == 56 else None
 	if not name:
 		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = "/custom_404.html?key_code={}".format(key_code[0:-6])
-	else:	
+		frappe.local.response["location"] = "/404"
+	else:
 		html = frappe.get_print(doctype, name, format, no_letterhead=no_letterhead)
 		frappe.local.response.filename = "{name}.pdf".format(name=name.replace(" ", "-").replace("/", "-"))
 		frappe.local.response.filecontent = get_pdf(html)
 		frappe.local.response.type = "download"
-	
-def get_conditions(filters):
-	conditions = []
-	
-	if filters.get("start_date"):
-		conditions.append("fecha >= '{start_date}'")
-	
-	if filters.get("end_date"):
-		conditions.append("fecha <= '{end_date}'")
-	
-	if filters.get("paciente"):
-		conditions.append("paciente LIKE '%{paciente}%'")
-	
-	if filters.get("medico"):
-		conditions.append("medico = '{medico}'")
-	
-	if filters.get("sucursal"):
-		conditions.append("sucursal = '{sucursal}'")
-	
-	if filters.get("institucion"):
-		conditions.append("institucion = '{institucion}'")
-	
-	if filters.get("docstatus"):
-		conditions.append("docstatus = '{docstatus}'")
 
-	return " And ".join(conditions).format(**filters)
+def get_conditions(filters):
+	"""Condiciones parametrizadas. Devuelve ([], {}) si no hay ningún filtro."""
+	conditions, values = [], {}
+
+	if filters.get("start_date"):
+		conditions.append("fecha >= %(start_date)s")
+		values["start_date"] = getdate(filters.start_date)
+
+	if filters.get("end_date"):
+		conditions.append("fecha <= %(end_date)s")
+		values["end_date"] = getdate(filters.end_date)
+
+	if filters.get("paciente"):
+		conditions.append("paciente LIKE %(paciente)s")
+		values["paciente"] = "%{}%".format(cstr(filters.paciente).strip()[:80])
+
+	if filters.get("paciente_id"):
+		conditions.append("cedula_pasaporte = %(paciente_id)s")
+		values["paciente_id"] = cstr(filters.paciente_id).strip()
+
+	for field in ("medico", "sucursal", "institucion"):
+		if filters.get(field):
+			conditions.append("{0} = %({0})s".format(field))
+			values[field] = cstr(filters.get(field)).strip()
+
+	if "instituciones" in filters:
+		lista = [cstr(i).strip() for i in (filters.instituciones or []) if cstr(i).strip()]
+		conditions.append("institucion IN %(instituciones)s" if lista else "1 = 0")
+		if lista:
+			values["instituciones"] = tuple(lista)
+
+	if cstr(filters.get("docstatus")) in ("0", "1"):
+		conditions.append("docstatus = %(docstatus)s")
+		values["docstatus"] = cint(filters.docstatus)
+
+	return conditions, values
 
 def borrador(doctype, docname):
 	doc = frappe.get_doc(doctype,docname)
