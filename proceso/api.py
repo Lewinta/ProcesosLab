@@ -1,7 +1,12 @@
 # Copyright (c) 2024, Lewin Villar and Contributors
 # For license information, please see license.txt
 
+import base64
+import re
+from io import BytesIO
+
 import frappe
+import qrcode
 from frappe import _
 from frappe.utils import cint, cstr, get_url, getdate
 from frappe.utils.pdf import get_pdf
@@ -242,6 +247,24 @@ def get_single_result(key):
 	if len(key) != 56:
 		return False
 	return frappe.db.get_value("Resultado", {"key": key, "docstatus": 1}, "print_url") or False
+
+def qr_validacion(key):
+	"""Método Jinja (hooks.py) para el QR impreso en el formato "Resultado" (macro add_head_details).
+	Función pura, no consulta la base. El QR lleva el key_code (primeros 50 caracteres
+	de la llave) hacia /validate-result del portal; los últimos 6 son el código de
+	autorización, que se imprime aparte y quien valida escribe a mano."""
+	key = cstr(key).strip()
+	if not re.fullmatch(r"[0-9a-f]{56}", key):
+		return None
+	base = cstr(frappe.conf.get("resultados_portal_url") or "https://laboratoriobetalab.com").rstrip("/")
+	img = qrcode.make("{0}/validate-result?key_code={1}".format(base, key[:50]), box_size=4, border=1)
+	out = BytesIO()
+	img.save(out, format="PNG")
+	return {
+		"src": "data:image/png;base64," + base64.b64encode(out.getvalue()).decode(),
+		"host": base.split("://", 1)[-1],
+		"code": key[-6:],
+	}
 
 @frappe.whitelist(allow_guest=True)
 def download_result_pdf(key_code, format="Resultados Timbrados", no_letterhead=0):
