@@ -11,6 +11,11 @@ app_color = "grey"
 app_email = "lewinvillar@tzcode.tech"
 app_license = "MIT"
 
+# QR de validación en el formato de impresión "Resultado"
+jenv = {
+	"methods": ["qr_validacion:proceso.api.qr_validacion"],
+}
+
 # Includes in <head>
 # ------------------
 
